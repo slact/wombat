@@ -15,7 +15,8 @@ module Wombat
     module Locators
       module Factory
         def self.locator_for(property)
-          klass = case(property.wombat_property_format)
+          propform= property.wombat_property_format
+          klass = case(propform)
           when :text
             Text
           when :list
@@ -31,9 +32,25 @@ module Wombat
           when :headers
             Headers
           else
-            raise Wombat::Property::Locators::UnknownTypeException.new("Unknown property format #{property.format}.")
+            attr_match = propform.to_s.match(/^attr=(.*)/)
+            if attr_match
+              Class.new(Locators::Base) do
+                @@attr= attr_match[1]
+                def locate(context, page = nil)
+                  node = locate_nodes(context)
+                  node = node.first unless node.is_a?(String)
+                  unless node
+                    value = nil
+                  else 
+                    value = node.attributes[@@attr].to_s
+                  end
+                  super { value }
+                end
+              end
+            else
+              raise Wombat::Property::Locators::UnknownTypeException.new("Unknown property format #{property.format}.")
+            end
           end
-
           klass.new(property)
         end
       end
